@@ -57,6 +57,17 @@ async def create_job(
     return {"job_id": job_id, "status": "queued", "warnings": warnings}
 
 
+@router.get("/demo/id")
+def demo_id():
+    """Job id of the pre-computed demo result, if one was baked in at build
+    time. Free tier CPU makes a live one hour upload slow, so reviewers get
+    a finished result instantly while live upload keeps working."""
+    marker = Path(db.DB_PATH).parent / "demo_job_id.txt"
+    if marker.exists():
+        return {"job_id": marker.read_text(encoding="utf-8").strip()}
+    return {"job_id": None}
+
+
 @router.get("/{job_id}")
 def get_job(job_id: str):
     conn = _conn()
