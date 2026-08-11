@@ -30,7 +30,6 @@ COPY --from=frontend /app/frontend/dist ./frontend/dist
 ENV HF_HOME=/app/.cache/huggingface \
     TORCH_HOME=/app/.cache/torch \
     XDG_CACHE_HOME=/app/.cache
-EXPOSE 7860
-
 EXPOSE 10000
+
 CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
