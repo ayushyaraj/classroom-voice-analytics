@@ -1,0 +1,27 @@
+# environments and secrets
+.venv/
+.env
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# node
+node_modules/
+dist/
+
+# data that must never be committed
+input-samples/
+uploads/
+outputs/
+models/
+logs/
+*.wav
+*.mp3
+*.db
+
+# editor noise
+.vscode/
+.idea/
