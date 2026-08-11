@@ -14,6 +14,7 @@ dist/
 
 # data that must never be committed
 input-samples/
+data/
 uploads/
 outputs/
 models/
@@ -21,6 +22,8 @@ logs/
 *.wav
 *.mp3
 *.db
+# the 60 second demo clip is the one committed audio file
+!samples/*.mp3
 
 # editor noise
 .vscode/
