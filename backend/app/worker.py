@@ -26,13 +26,19 @@ from app.asr.base import BaseTranscriber
 from app.config import (
     DEFAULT_LANGUAGE,
     GROQ_CHUNK_MAX_SECONDS,
-    GROQ_CHUNK_MIN_SECONDS,
     LANGUAGE_DETECT_CHUNKS,
+    TARGET_SAMPLE_RATE,
     WORK_DIR,
 )
 from app.pipeline import metrics as metrics_mod
 from app.pipeline import summary as summary_mod
-from app.pipeline.chunker import Chunk, detect_speech_regions, plan_chunks, silence_gaps
+from app.pipeline.chunker import (
+    Chunk,
+    detect_speech_regions,
+    fixed_window_chunks,
+    plan_chunks,
+    silence_gaps,
+)
 from app.pipeline.preprocess import AudioError, preprocess, probe
 from app.pipeline.speakers import attribute_speakers
 
@@ -105,6 +111,10 @@ def _detect_language_notice(
     votes: list[str] = []
     for chunk in chunks[:LANGUAGE_DETECT_CHUNKS]:
         audio = _read_chunk(wav_path, chunk)
+        # Detect on at most the first 30 s of a chunk. Groq chunks are minutes
+        # long; sending the whole thing just to read the language would
+        # transcribe minutes of audio and burn quota for nothing.
+        audio = audio[: TARGET_SAMPLE_RATE * 30]
         lang, prob = transcriber.detect_language(audio)
         votes.append(lang)
         logger.info(
@@ -126,21 +136,43 @@ def _detect_language_notice(
     return None
 
 
+def _gaps_from_segments(
+    segments: list[dict[str, Any]], total_seconds: float
+) -> list[float]:
+    """Silence durations derived from transcript segment boundaries, used for
+    the Groq path where VAD is skipped."""
+    gaps: list[float] = []
+    prev_end = 0.0
+    for s in sorted(segments, key=lambda x: x["start"]):
+        gap = s["start"] - prev_end
+        if gap > 0:
+            gaps.append(gap)
+        prev_end = max(prev_end, s["end"])
+    tail = total_seconds - prev_end
+    if tail > 0:
+        gaps.append(tail)
+    return gaps
+
+
 def _stage_transcribe(conn, job: dict[str, Any]) -> None:
     wav_path = Path(job["wav_path"])
     duration = job["duration_seconds"] or 1.0
+    is_groq = job["model_size"] == "groq"
 
-    regions = detect_speech_regions(wav_path)
-    if not regions:
-        raise AudioError("No speech was detected in the recording.")
-    # Groq gets large chunks (few requests, stays under the free rate limit);
-    # local backends keep the small default window for tight memory and
-    # frequent progress updates.
-    if job["model_size"] == "groq":
-        chunks = plan_chunks(regions, GROQ_CHUNK_MIN_SECONDS, GROQ_CHUNK_MAX_SECONDS)
+    if is_groq:
+        # Skip silero VAD entirely. On a small deploy box torch VAD inference
+        # over the whole file is the slow step, and Groq tolerates silence
+        # inside a chunk. Fixed large windows keep the request count low and
+        # the box light (torch never even loads). Silence for the pause
+        # metrics is computed from the transcript after this stage.
+        chunks = fixed_window_chunks(duration, GROQ_CHUNK_MAX_SECONDS)
+        gaps: list[float] = []
     else:
+        regions = detect_speech_regions(wav_path)
+        if not regions:
+            raise AudioError("No speech was detected in the recording.")
         chunks = plan_chunks(regions)
-    gaps = silence_gaps(regions, duration)
+        gaps = silence_gaps(regions, duration)
     # persisted now so analysis and later recomputes never re-run VAD
     db.save_metrics(conn, job["id"], {"silence_gaps": gaps})
 
@@ -184,6 +216,13 @@ def _stage_transcribe(conn, job: dict[str, Any]) -> None:
             trailing_text = rows[-1]["text"]
         # real progress: seconds of audio processed over total seconds
         db.update_job(conn, job["id"], progress=min(chunk.end / duration, 1.0))
+
+    if is_groq:
+        # VAD was skipped, so derive the silence breakdown from the transcript.
+        stored = db.get_segments(conn, job["id"])
+        db.save_metrics(
+            conn, job["id"], {"silence_gaps": _gaps_from_segments(stored, duration)}
+        )
 
     db.update_job(conn, job["id"], stage="transcribing", progress=1.0)
 

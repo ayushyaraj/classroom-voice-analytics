@@ -15,7 +15,10 @@ from typing import Callable
 
 import numpy as np
 import soundfile as sf
-import torch
+
+# torch is imported lazily inside the VAD functions, not at module load, so the
+# Groq path (which skips VAD) never pays torch's import cost. That matters on a
+# small deploy box where loading torch alone is hundreds of MB of RAM.
 
 from app.config import (
     CHUNK_MAX_SECONDS,
@@ -42,6 +45,8 @@ _vad_iterator_cls = None
 def _load_vad():
     """Load silero-vad once per process via torch.hub."""
     global _model, _vad_iterator_cls
+    import torch  # lazy: only the local VAD path needs torch
+
     if _model is None:
         # pinned to a release tag so a moving master cannot break the build
         _model, utils = torch.hub.load(
@@ -90,6 +95,8 @@ def detect_speech_regions(
     progress_cb receives a 0..1 fraction of file scanned, so the UI can show
     real VAD progress on a long file.
     """
+    import torch  # lazy, see module note
+
     model, vad_iterator_cls = _load_vad()
     vad = vad_iterator_cls(
         model,
@@ -195,6 +202,25 @@ def plan_chunks(
                 close(current)
                 current = None
     close(current)
+    return chunks
+
+
+def fixed_window_chunks(
+    total_seconds: float, window_seconds: float = CHUNK_MAX_SECONDS
+) -> list[Chunk]:
+    """Split the whole timeline into fixed windows without running VAD.
+
+    Used for the Groq path. Groq tolerates silence inside a chunk and we send
+    large windows anyway, so paying for silero VAD (torch inference over the
+    whole file) buys nothing there and is the slow step on a weak deploy box.
+    Silence for the pause metrics is derived from the transcript afterwards.
+    """
+    chunks: list[Chunk] = []
+    start = 0.0
+    while start < total_seconds:
+        end = min(start + window_seconds, total_seconds)
+        chunks.append(Chunk(start, end, [Region(start, end)]))
+        start = end
     return chunks
 
 
