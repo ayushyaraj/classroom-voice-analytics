@@ -1,0 +1,208 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.downloads {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+}
+
+.downloads a {
+  color: var(--accent);
+}
+
+.back {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.sessionHeader {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+@media (max-width: 640px) {
+  .sessionHeader {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sessionTitle {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.factTable th {
+  width: 40%;
+  color: var(--muted);
+  font-weight: 500;
+  border: none;
+  padding: 3px 8px 3px 0;
+  vertical-align: top;
+}
+
+.factTable td {
+  border: none;
+  padding: 3px 0;
+}
+
+.photoFigure {
+  margin: 0;
+}
+
+.photo {
+  width: 100%;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.photoCaption {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.metaWarnings,
+.jobWarnings {
+  margin: 10px 0 0;
+  padding: 8px 12px 8px 28px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.h2 {
+  font-size: 17px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.h3 {
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+
+.summary {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.talkBar {
+  display: flex;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.talkTeacher,
+.talkStudent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.talkTeacher {
+  background: var(--teacher);
+}
+
+.talkStudent {
+  background: var(--student);
+}
+
+.countTable th {
+  color: var(--muted);
+  font-weight: 500;
+  width: 25%;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.swatchTeacher,
+.swatchStudent {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-left: 8px;
+}
+
+.swatchTeacher {
+  background: var(--teacher);
+}
+
+.swatchStudent {
+  background: var(--student);
+}
+
+.saveHint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+}

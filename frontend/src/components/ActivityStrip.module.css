@@ -1,0 +1,54 @@
+.strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  overflow-x: auto;
+  padding-bottom: 18px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px;
+  background: var(--bg);
+}
+
+.col {
+  position: relative;
+  flex: 0 0 10px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+  width: 100%;
+  background: #e4e7ea;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.teacher {
+  width: 100%;
+  background: var(--teacher);
+}
+
+.student {
+  width: 100%;
+  background: var(--student);
+}
+
+.tick {
+  position: absolute;
+  bottom: -16px;
+  left: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+}

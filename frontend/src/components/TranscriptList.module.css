@@ -1,0 +1,74 @@
+.viewport {
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--card);
+}
+
+.row {
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-sizing: border-box;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.time {
+  font-family: ui-monospace, Consolas, monospace;
+  color: var(--muted);
+}
+
+.tagTeacher,
+.tagStudent {
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  cursor: pointer;
+  background: var(--card);
+}
+
+.tagTeacher {
+  color: var(--teacher);
+}
+
+.tagStudent {
+  color: var(--student);
+}
+
+.conf {
+  color: var(--muted);
+}
+
+.q {
+  color: #fff;
+  background: var(--accent);
+  border-radius: 3px;
+  padding: 0 5px;
+  font-weight: 600;
+}
+
+.text {
+  font-size: 14px;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+}
