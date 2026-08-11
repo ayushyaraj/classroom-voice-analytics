@@ -58,14 +58,30 @@ continue from the first unchecked item. Do not restart completed work.
 - [x] run pytest (25 pass), fixes applied: added torchaudio==2.6.0 (silero
       hub imports it), pinned silero-vad to v5.1.2, summary handles zero
       questions and 1-minute singular, added /api/jobs/demo/id route.
-- [ ] push backend + open PR
-- [ ] full 67 min verification run in background, record wall clock and peak RSS
-- [ ] frontend (React + Vite, plain CSS modules)
-- [ ] 60 s trimmed clip in samples/, document trim command
-- [ ] Dockerfile, docs/architecture.md, README with real numbers
-- [ ] pre-computed demo result for the trimmed sample
-- [ ] final push, print manual HF Spaces deploy steps
+- [x] pushed backend, opened PR #1 (base main = scaffold, head branch = build)
+- [x] frontend (React + Vite, plain CSS modules): upload, processing, results
+      with metric cards, activity strip, virtualized editable transcript
+- [x] 60 s trimmed clip in samples/, trim command documented in README
+- [x] Groq cloud backend added behind BaseTranscriber (speed over local CPU).
+      Large-chunk batching + 429 retry to survive the free tier. Verified: real
+      22 min file done in ~2 min 16 s on Groq (vs 30-45 min local medium).
+- [x] Dockerfile (two stage, HF Spaces port 7860), README with real numbers,
+      docs/DEPLOY.md with HF Spaces + Vercel/Render breakdown
+- [x] merged build branch into main, pushed main (repo complete)
+- [ ] full 67 min local verification run for local-path wall clock and peak RSS
+      (Groq path is the shipped fast path; local numbers still pending)
+- [ ] pre-computed demo result baked for deploy (demo_job_id is local/ephemeral
+      right now; the "View sample result" link only shows when a marker exists)
+- [ ] docs/architecture.md
+- [ ] actually deploy to HF Spaces and paste the live link into the README
+
+## Deployment quick reference
+
+- Dockerfile at repo root builds frontend + serves it from FastAPI on 7860.
+- HF Spaces: push repo to the Space remote, set GROQ_API_KEY as a Space secret.
+- Groq key lives only in .env locally and in the host secret store, never in git.
+- Full steps: docs/DEPLOY.md.
 
 ## In progress
 
-git init and first commit.
+Deployment. Everything else built and verified locally.
