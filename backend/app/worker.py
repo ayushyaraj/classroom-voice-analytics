@@ -25,6 +25,8 @@ from app import db
 from app.asr.base import BaseTranscriber
 from app.config import (
     DEFAULT_LANGUAGE,
+    GROQ_CHUNK_MAX_SECONDS,
+    GROQ_CHUNK_MIN_SECONDS,
     LANGUAGE_DETECT_CHUNKS,
     WORK_DIR,
 )
@@ -131,7 +133,13 @@ def _stage_transcribe(conn, job: dict[str, Any]) -> None:
     regions = detect_speech_regions(wav_path)
     if not regions:
         raise AudioError("No speech was detected in the recording.")
-    chunks = plan_chunks(regions)
+    # Groq gets large chunks (few requests, stays under the free rate limit);
+    # local backends keep the small default window for tight memory and
+    # frequent progress updates.
+    if job["model_size"] == "groq":
+        chunks = plan_chunks(regions, GROQ_CHUNK_MIN_SECONDS, GROQ_CHUNK_MAX_SECONDS)
+    else:
+        chunks = plan_chunks(regions)
     gaps = silence_gaps(regions, duration)
     # persisted now so analysis and later recomputes never re-run VAD
     db.save_metrics(conn, job["id"], {"silence_gaps": gaps})

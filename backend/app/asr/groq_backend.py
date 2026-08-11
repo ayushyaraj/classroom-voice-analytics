@@ -17,13 +17,19 @@ from __future__ import annotations
 import io
 import logging
 import os
+import time
 
 import httpx
 import numpy as np
 import soundfile as sf
 
 from app.asr.base import AsrSegment, BaseTranscriber
-from app.config import GROQ_ENDPOINT, GROQ_MODEL, TARGET_SAMPLE_RATE
+from app.config import (
+    GROQ_ENDPOINT,
+    GROQ_MAX_RETRIES,
+    GROQ_MODEL,
+    TARGET_SAMPLE_RATE,
+)
 from app.pipeline.preprocess import AudioError
 
 logger = logging.getLogger(__name__)
@@ -49,15 +55,28 @@ class GroqCloudTranscriber(BaseTranscriber):
     def compute_type(self) -> str:
         return f"groq:{self._model}"
 
+    def _encode(self, audio: np.ndarray) -> bytes:
+        # Encode the 16 kHz mono float32 chunk to a 16 bit wav in memory.
+        buffer = io.BytesIO()
+        sf.write(buffer, audio, TARGET_SAMPLE_RATE, format="WAV", subtype="PCM_16")
+        return buffer.getvalue()
+
+    def _retry_after(self, response: httpx.Response, attempt: int) -> float:
+        """Seconds to wait before retrying a rate-limited request. Prefer the
+        server's Retry-After header; otherwise back off exponentially."""
+        header = response.headers.get("retry-after")
+        if header:
+            try:
+                return min(float(header), 30.0)
+            except ValueError:
+                pass
+        # 2, 4, 8, ... capped so a job never stalls for minutes on one chunk
+        return min(2.0 * (2 ** attempt), 30.0)
+
     def _post(
         self, audio: np.ndarray, language: str | None, prompt: str | None
     ) -> dict:
-        # Encode the 16 kHz mono float32 chunk to an in-memory 16 bit wav.
-        # A 60 s chunk is under 2 MB, well inside Groq's file size limit.
-        buffer = io.BytesIO()
-        sf.write(buffer, audio, TARGET_SAMPLE_RATE, format="WAV", subtype="PCM_16")
-        buffer.seek(0)
-
+        wav = self._encode(audio)
         data = {
             "model": self._model,
             "response_format": "verbose_json",  # gives per segment timestamps
@@ -68,32 +87,47 @@ class GroqCloudTranscriber(BaseTranscriber):
         if prompt:
             data["prompt"] = prompt
 
-        try:
-            response = self._client.post(
-                GROQ_ENDPOINT,
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                data=data,
-                files={"file": ("chunk.wav", buffer, "audio/wav")},
-            )
-        except httpx.HTTPError as exc:
-            raise AudioError(
-                "Could not reach the Groq service. Check the internet "
-                "connection and retry, or use a local model size."
-            ) from exc
+        last_status = None
+        for attempt in range(GROQ_MAX_RETRIES):
+            try:
+                response = self._client.post(
+                    GROQ_ENDPOINT,
+                    headers={"Authorization": f"Bearer {self._api_key}"},
+                    data=data,
+                    files={"file": ("chunk.wav", io.BytesIO(wav), "audio/wav")},
+                )
+            except httpx.HTTPError as exc:
+                raise AudioError(
+                    "Could not reach the Groq service. Check the internet "
+                    "connection and retry, or use a local model size."
+                ) from exc
 
-        if response.status_code == 401:
-            raise AudioError("The Groq API key was rejected. Check GROQ_API_KEY.")
-        if response.status_code == 429:
-            raise AudioError(
-                "Groq rate limit hit. Wait a minute and retry, or use a local "
-                "model size. The free tier is not unlimited."
-            )
-        if response.status_code == 413:
-            raise AudioError("A chunk was too large for Groq to accept.")
-        if response.status_code >= 400:
-            logger.warning("groq error %s: %s", response.status_code, response.text[:300])
-            raise AudioError(f"Groq returned an error ({response.status_code}).")
-        return response.json()
+            if response.status_code == 401:
+                raise AudioError("The Groq API key was rejected. Check GROQ_API_KEY.")
+            if response.status_code == 413:
+                raise AudioError("A chunk was too large for Groq to accept.")
+            # rate limited or transiently unavailable: wait and retry
+            if response.status_code in (429, 503):
+                last_status = response.status_code
+                wait = self._retry_after(response, attempt)
+                logger.info(
+                    "groq %s, waiting %.1fs (attempt %d/%d)",
+                    response.status_code, wait, attempt + 1, GROQ_MAX_RETRIES,
+                )
+                time.sleep(wait)
+                continue
+            if response.status_code >= 400:
+                logger.warning(
+                    "groq error %s: %s", response.status_code, response.text[:300]
+                )
+                raise AudioError(f"Groq returned an error ({response.status_code}).")
+            return response.json()
+
+        raise AudioError(
+            "Groq stayed rate limited after several retries. The free tier "
+            "resets after a short wait, or switch to a local model size. "
+            f"(last status {last_status})"
+        )
 
     def transcribe_chunk(
         self,

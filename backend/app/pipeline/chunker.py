@@ -148,12 +148,21 @@ def detect_speech_regions(
     return kept
 
 
-def plan_chunks(regions: list[Region]) -> list[Chunk]:
-    """Group speech regions into 30 to 60 second chunks.
+def plan_chunks(
+    regions: list[Region],
+    min_seconds: float = CHUNK_MIN_SECONDS,
+    max_seconds: float = CHUNK_MAX_SECONDS,
+) -> list[Chunk]:
+    """Group speech regions into chunks between min_seconds and max_seconds.
+
+    The local backend uses the default 30 to 60 second window so per-chunk
+    memory and progress granularity stay small. The Groq backend passes much
+    larger bounds so a long file becomes a handful of requests instead of
+    dozens, which is what keeps it under the free-tier rate limit.
 
     Every boundary between regions is a VAD silence, so closing a chunk at a
     region edge never splits a word. A single continuous region longer than
-    CHUNK_MAX_SECONDS is split at the cap.
+    max_seconds is split at the cap.
     TODO: split oversized continuous regions at their quietest frame instead
     of a hard cap; with 300 ms minimum silence this almost never triggers on
     classroom audio, but a hard cap can clip a word when it does.
@@ -167,8 +176,8 @@ def plan_chunks(regions: list[Region]) -> list[Chunk]:
 
     for region in regions:
         # split a pathological continuous region at the cap
-        while region.duration > CHUNK_MAX_SECONDS:
-            head = Region(region.start, region.start + CHUNK_MAX_SECONDS)
+        while region.duration > max_seconds:
+            head = Region(region.start, region.start + max_seconds)
             close(current)
             current = None
             chunks.append(Chunk(head.start, head.end, [head]))
@@ -176,13 +185,13 @@ def plan_chunks(regions: list[Region]) -> list[Chunk]:
 
         if current is None:
             current = Chunk(region.start, region.end, [region])
-        elif region.end - current.start > CHUNK_MAX_SECONDS:
+        elif region.end - current.start > max_seconds:
             close(current)
             current = Chunk(region.start, region.end, [region])
         else:
             current.regions.append(region)
             current.end = region.end
-            if current.duration >= CHUNK_MIN_SECONDS:
+            if current.duration >= min_seconds:
                 close(current)
                 current = None
     close(current)

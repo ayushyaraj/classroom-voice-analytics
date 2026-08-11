@@ -80,6 +80,15 @@ SUPPORTED_MODEL_SIZES = ("tiny", "base", "small", "medium", "groq")
 # (GROQ_API_KEY), never stored in a file or committed.
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
 GROQ_MODEL = "whisper-large-v3-turbo"
+# Send Groq large chunks so a long recording is a few requests, not dozens.
+# A 540 s chunk as 16 kHz mono 16 bit wav is about 16 MB, safely under Groq's
+# 25 MB free-tier upload limit, and few requests avoids the per-minute rate
+# limit that dozens of small chunks would trip.
+GROQ_CHUNK_MIN_SECONDS = 300.0
+GROQ_CHUNK_MAX_SECONDS = 540.0
+# On a 429 (rate limit) the backend waits and retries this many times before
+# giving up, honouring the server's Retry-After when present.
+GROQ_MAX_RETRIES = 6
 
 DEFAULT_LANGUAGE = "mr"
 SUPPORTED_LANGUAGES = ("mr", "hi", "en", "auto")
