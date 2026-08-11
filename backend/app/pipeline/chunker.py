@@ -43,8 +43,9 @@ def _load_vad():
     """Load silero-vad once per process via torch.hub."""
     global _model, _vad_iterator_cls
     if _model is None:
+        # pinned to a release tag so a moving master cannot break the build
         _model, utils = torch.hub.load(
-            repo_or_dir="snakers4/silero-vad",
+            repo_or_dir="snakers4/silero-vad:v5.1.2",
             model="silero_vad",
             trust_repo=True,
             onnx=False,

@@ -10,6 +10,8 @@ tokenizers==0.21.0
 onnxruntime==1.20.1
 av==14.0.1
 torch==2.6.0
+# silero-vad's hub code imports torchaudio at module load
+torchaudio==2.6.0
 librosa==0.10.2.post1
 numpy==1.26.4
 soundfile==0.12.1
