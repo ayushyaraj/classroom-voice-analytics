@@ -1,15 +1,19 @@
 """Audio probing and preprocessing via ffmpeg subprocesses.
 
 The whole file is never loaded into Python memory; ffmpeg streams from disk
-to disk. One ffmpeg invocation does every transform in a single pass:
+to disk. Resampling to 16 kHz mono happens first so the high pass is cheap:
 
-    ffmpeg -i input -af highpass=f=80,loudnorm=I=-16:TP=-1.5:LRA=11
+    ffmpeg -i input -af aresample=16000,highpass=f=80
            -ac 1 -ar 16000 -sample_fmt s16 -y output.wav
 
+    aresample=16000 resample early so the high pass processes fewer samples
     highpass=f=80   cuts ceiling fan rumble below the voice band
-    loudnorm        evens out varying teacher-to-phone distance
     -ac 1 -ar 16000 mono 16 kHz, what Whisper and silero-vad expect
     -sample_fmt s16 16 bit PCM
+
+I dropped level normalization (loudnorm, then dynaudnorm) because it was the
+slow filter on a small free-tier box, and the ASR models handle level fine.
+Keeping raw levels also helps the energy based speaker heuristic.
 """
 
 from __future__ import annotations
@@ -108,8 +112,20 @@ def extension_matches_container(input_path: Path, container: str) -> bool:
     return any(name in allowed for name in names)
 
 
-def preprocess(input_path: Path, output_wav: Path) -> str:
+def preprocess(
+    input_path: Path,
+    output_wav: Path,
+    total_seconds: float | None = None,
+    progress_cb=None,
+) -> str:
     """Convert input to analysis-ready wav in one ffmpeg pass.
+
+    Only two cheap filters run: resample to 16 kHz (done first, so the rest is
+    cheap) and an 80 Hz high pass for fan rumble. Level normalization was
+    dropped because it was the slow filter on a small box and the ASR models
+    are robust to level. If total_seconds and progress_cb are given, ffmpeg's
+    own progress is streamed so the UI bar moves during conversion instead of
+    sitting at zero.
 
     Returns the exact command string that ran, for the job log and README.
     """
@@ -117,23 +133,42 @@ def preprocess(input_path: Path, output_wav: Path) -> str:
     cmd = [
         _binary("ffmpeg"),
         "-i", str(input_path),
-        "-af", f"highpass=f={HIGHPASS_HZ},loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-af", f"aresample={TARGET_SAMPLE_RATE},highpass=f={HIGHPASS_HZ}",
         "-ac", "1",
         "-ar", str(TARGET_SAMPLE_RATE),
         "-sample_fmt", "s16",
+        "-progress", "pipe:1",
+        "-nostats",
         "-y",
         str(output_wav),
     ]
     logger.info("preprocess: %s", " ".join(cmd))
-    # A two hour file transcodes in a few minutes on CPU; 30 min is a hard
-    # stop against a hung process, not an expected duration.
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
-    if result.returncode != 0:
-        tail = (result.stderr or "").strip().splitlines()[-3:]
+
+    # Stream stdout so the -progress lines can drive the UI bar. stderr is kept
+    # for the error message if it fails.
+    proc = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    )
+    try:
+        for line in proc.stdout:
+            if progress_cb and total_seconds and line.startswith("out_time_us="):
+                raw = line.strip().split("=", 1)[1]
+                if raw.isdigit():
+                    frac = min(int(raw) / 1_000_000 / total_seconds, 0.999)
+                    progress_cb(frac)
+        proc.wait(timeout=1800)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        raise AudioError("Audio conversion timed out.")
+
+    if proc.returncode != 0:
+        tail = (proc.stderr.read() or "").strip().splitlines()[-3:]
         logger.warning("ffmpeg failed: %s", " | ".join(tail))
         raise AudioError(
             "Audio conversion failed. The file may use an unsupported codec."
         )
     if not output_wav.exists() or output_wav.stat().st_size == 0:
         raise AudioError("Audio conversion produced no output.")
+    if progress_cb:
+        progress_cb(1.0)
     return " ".join(cmd)

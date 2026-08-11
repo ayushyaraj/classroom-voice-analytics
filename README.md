@@ -101,8 +101,13 @@ failure. Word error rate rises on code mixed speech, which is expected.
 One ffmpeg pass prepares the audio:
 
 ```
-ffmpeg -i input -af highpass=f=80,loudnorm=I=-16:TP=-1.5:LRA=11 -ac 1 -ar 16000 -sample_fmt s16 -y output.wav
+ffmpeg -i input -af aresample=16000,highpass=f=80,dynaudnorm -ac 1 -ar 16000 -sample_fmt s16 -y output.wav
 ```
+
+It resamples to 16 kHz first so the filters are cheap, high passes at 80 Hz to
+cut fan rumble, and uses dynaudnorm for level normalization. I moved off
+loudnorm because, although it is more accurate, it is CPU heavy enough to make
+preprocessing a long file take minutes on a small free-tier box.
 
 silero-vad finds speech regions, which are grouped into chunks cut only at
 silence boundaries so no word is split. Chunks transcribe in sequence, each
