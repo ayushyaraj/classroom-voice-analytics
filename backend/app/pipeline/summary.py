@@ -11,7 +11,8 @@ from typing import Any
 
 
 def _mins(seconds: float | None) -> str:
-    return f"{(seconds or 0) / 60:.0f} minutes"
+    minutes = round((seconds or 0) / 60)
+    return "1 minute" if minutes == 1 else f"{minutes} minutes"
 
 
 def _opening(metadata: dict[str, Any], duration_seconds: float | None) -> str:
@@ -63,6 +64,11 @@ def _participation_sentence(m: dict[str, Any]) -> str:
     q = m["teacher_question_count"]
     r = m["student_response_count"]
     band = m["student_participation_band"]
+    if q == 0:
+        return (
+            "The transcript contains no detected teacher questions, so the "
+            "participation score stays low by construction."
+        )
     if band == "high":
         return (
             f"Of {q} teacher questions, {r} drew student responses, and "
