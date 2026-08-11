@@ -10,10 +10,11 @@ const LANGUAGES = [
 ];
 
 const MODEL_SIZES = [
-  { value: "medium", label: "medium (best accuracy, slowest)" },
-  { value: "small", label: "small" },
-  { value: "base", label: "base" },
-  { value: "tiny", label: "tiny (fastest, rough)" },
+  { value: "groq", label: "Fast cloud, Groq (needs API key, fastest)" },
+  { value: "medium", label: "medium local (best accuracy, slowest)" },
+  { value: "small", label: "small local" },
+  { value: "base", label: "base local" },
+  { value: "tiny", label: "tiny local (fast, rough)" },
 ];
 
 export default function UploadForm({ onCreated }) {

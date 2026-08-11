@@ -12,6 +12,17 @@ from pathlib import Path
 
 # Repo root is three parents up from this file (app/config/__init__.py).
 ROOT_DIR = Path(__file__).resolve().parents[3]
+
+# Load a local .env if present so GROQ_API_KEY (and any future secret) can live
+# in a gitignored file instead of the shell. Silent if python-dotenv or the
+# file is absent; the app still reads os.environ directly.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(ROOT_DIR / ".env")
+except Exception:
+    pass
+
 DATA_DIR = ROOT_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 WORK_DIR = DATA_DIR / "work"
@@ -58,7 +69,18 @@ CHUNK_MAX_SECONDS = 60.0
 # --- transcription -----------------------------------------------------------
 
 DEFAULT_MODEL_SIZE = "medium"
-SUPPORTED_MODEL_SIZES = ("tiny", "base", "small", "medium")
+# "groq" is not a local model size; it selects the Groq cloud backend, which is
+# far faster than local CPU. Kept in the same field so the existing selector and
+# validation cover it without a second concept.
+SUPPORTED_MODEL_SIZES = ("tiny", "base", "small", "medium", "groq")
+
+# Groq hosts Whisper on GPUs and exposes an OpenAI-compatible endpoint. The
+# turbo model is the fastest; accuracy is lower than large-v3 but the point of
+# this path is speed. The API key is read only from the environment
+# (GROQ_API_KEY), never stored in a file or committed.
+GROQ_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
+GROQ_MODEL = "whisper-large-v3-turbo"
+
 DEFAULT_LANGUAGE = "mr"
 SUPPORTED_LANGUAGES = ("mr", "hi", "en", "auto")
 # Language detection runs on the first N speech chunks to compare against the

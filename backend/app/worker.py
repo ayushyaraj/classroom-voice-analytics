@@ -44,11 +44,20 @@ _transcribers: dict[str, BaseTranscriber] = {}
 
 
 def _get_transcriber(model_size: str) -> BaseTranscriber:
-    """Cache one loaded model per size for the life of the process."""
-    if model_size not in _transcribers:
-        from app.asr.faster_whisper_backend import FasterWhisperTranscriber
+    """Cache one transcriber per size for the life of the process.
 
-        _transcribers[model_size] = FasterWhisperTranscriber(model_size)
+    "groq" selects the cloud backend; every other value is a local
+    faster-whisper model size.
+    """
+    if model_size not in _transcribers:
+        if model_size == "groq":
+            from app.asr.groq_backend import GroqCloudTranscriber
+
+            _transcribers[model_size] = GroqCloudTranscriber()
+        else:
+            from app.asr.faster_whisper_backend import FasterWhisperTranscriber
+
+            _transcribers[model_size] = FasterWhisperTranscriber(model_size)
     return _transcribers[model_size]
 
 

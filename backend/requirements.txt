@@ -18,3 +18,5 @@ soundfile==0.12.1
 scikit-learn==1.6.1
 pytest==8.3.4
 httpx==0.28.1
+# loads a local .env so the optional GROQ_API_KEY need not sit in the shell
+python-dotenv==1.2.2
