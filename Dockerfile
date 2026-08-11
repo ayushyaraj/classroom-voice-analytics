@@ -27,9 +27,13 @@ COPY --from=frontend /app/frontend/dist ./frontend/dist
 # Hugging Face Spaces routes traffic to 7860. The app serves the API and the
 # built frontend from this single port. HF caches (torch hub, huggingface) go
 # to a writable dir so the container does not try to write to a read-only home.
+
 ENV HF_HOME=/app/.cache/huggingface \
     TORCH_HOME=/app/.cache/torch \
     XDG_CACHE_HOME=/app/.cache
+
 EXPOSE 10000
+
+WORKDIR /app/backend
 
 CMD ["sh", "-c", "python -m uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
