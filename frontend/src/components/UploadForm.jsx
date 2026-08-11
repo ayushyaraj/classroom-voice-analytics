@@ -11,10 +11,10 @@ const LANGUAGES = [
 
 const MODEL_SIZES = [
   { value: "groq", label: "Fast cloud, Groq (needs API key, fastest)" },
-  { value: "medium", label: "medium local (best accuracy, slowest)" },
-  { value: "small", label: "small local" },
-  { value: "base", label: "base local" },
-  { value: "tiny", label: "tiny local (fast, rough)" },
+  // { value: "medium", label: "medium local (best accuracy, slowest)" },
+  // { value: "small", label: "small local" },
+  // { value: "base", label: "base local" },
+  // { value: "tiny", label: "tiny local (fast, rough)" },
 ];
 
 export default function UploadForm({ onCreated }) {
@@ -22,7 +22,7 @@ export default function UploadForm({ onCreated }) {
   const [sidecar, setSidecar] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [language, setLanguage] = useState("mr");
-  const [modelSize, setModelSize] = useState("medium");
+  const [modelSize, setModelSize] = useState("groq");
   const [studentCount, setStudentCount] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState(false);
