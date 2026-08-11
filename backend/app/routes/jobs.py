@@ -114,6 +114,19 @@ def get_progress(job_id: str):
     }
 
 
+@router.get("/{job_id}/events")
+def get_events(job_id: str, after_id: int = 0):
+    """Live activity feed for the processing screen. Poll with the last seen
+    id to get only new lines."""
+    conn = _conn()
+    try:
+        _job_or_404(conn, job_id)
+        events = db.get_events(conn, job_id, after_id)
+    finally:
+        conn.close()
+    return {"events": events}
+
+
 @router.get("/{job_id}/segments")
 def get_segments(job_id: str, after_id: int = 0):
     """Incremental fetch for the partial transcript during processing."""

@@ -13,6 +13,28 @@
   flex-wrap: wrap;
 }
 
+.statusRow strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--accent-soft);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .elapsed {
   color: var(--muted);
   font-size: 13px;
@@ -29,22 +51,13 @@
 .barFill {
   height: 100%;
   background: var(--accent);
-  transition: width 0.5s linear;
+  transition: width 0.4s linear;
 }
 
 .percent {
   color: var(--muted);
   font-size: 13px;
   margin: 6px 0 0;
-}
-
-.notice {
-  margin: 12px 0 0;
-  padding: 10px 12px;
-  background: var(--warn-bg);
-  border: 1px solid var(--warn-border);
-  border-radius: 4px;
-  font-size: 13px;
 }
 
 .error {
@@ -60,32 +73,68 @@
   cursor: pointer;
 }
 
-.partial {
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
   margin-top: 16px;
 }
 
-.partialTitle {
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.columnTitle {
   font-size: 14px;
   margin: 0 0 8px;
 }
 
-.partialScroll {
-  max-height: 260px;
+.feed {
+  height: 240px;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 8px 12px;
   background: var(--bg);
+  scroll-behavior: smooth;
+}
+
+.feedEmpty {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.feedLine {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 6px;
+  animation: fadein 0.3s ease;
 }
 
 .partialLine {
   margin: 0 0 6px;
   font-size: 13px;
+  animation: fadein 0.3s ease;
 }
 
-.time {
+.feedTime {
   color: var(--muted);
   font-family: ui-monospace, Consolas, monospace;
-  margin-right: 8px;
   font-size: 12px;
+  flex-shrink: 0;
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }

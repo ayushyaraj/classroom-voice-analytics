@@ -86,16 +86,37 @@ def _read_chunk(wav_path: Path, chunk: Chunk) -> np.ndarray:
 
 def _stage_preprocess(conn, job: dict[str, Any]) -> None:
     audio_path = Path(job["audio_path"])
+    db.add_event(conn, job["id"], "Reading audio file")
     info = probe(audio_path)
+    mins = info["duration_seconds"] / 60
+    db.add_event(
+        conn,
+        job["id"],
+        f"Audio is {mins:.0f} min, {info['codec']} at {info['sample_rate']} Hz",
+    )
+    db.update_job(conn, job["id"], duration_seconds=info["duration_seconds"])
+
     wav_path = WORK_DIR / f"{job['id']}.wav"
     if not wav_path.exists():
-        preprocess(audio_path, wav_path)
+        db.add_event(conn, job["id"], "Converting to 16 kHz mono and cutting rumble")
+        # throttle progress writes so a long conversion does not hammer SQLite
+        last = {"pct": -5}
+
+        def on_progress(frac: float) -> None:
+            db.update_job(conn, job["id"], progress=frac)
+            pct = int(frac * 100)
+            if pct - last["pct"] >= 20:
+                last["pct"] = pct
+                db.add_event(conn, job["id"], f"Converting audio: {pct}%")
+
+        preprocess(audio_path, wav_path, info["duration_seconds"], on_progress)
+    db.add_event(conn, job["id"], "Audio ready")
     db.update_job(
         conn,
         job["id"],
         wav_path=str(wav_path),
-        duration_seconds=info["duration_seconds"],
         stage="preprocessing",
+        progress=0.0,
     )
 
 
@@ -159,6 +180,7 @@ def _stage_transcribe(conn, job: dict[str, Any]) -> None:
     duration = job["duration_seconds"] or 1.0
     is_groq = job["model_size"] == "groq"
 
+    db.update_job(conn, job["id"], progress=0.0)
     if is_groq:
         # Skip silero VAD entirely. On a small deploy box torch VAD inference
         # over the whole file is the slow step, and Groq tolerates silence
@@ -168,6 +190,7 @@ def _stage_transcribe(conn, job: dict[str, Any]) -> None:
         chunks = fixed_window_chunks(duration, GROQ_CHUNK_MAX_SECONDS)
         gaps: list[float] = []
     else:
+        db.add_event(conn, job["id"], "Finding speech regions (voice activity)")
         regions = detect_speech_regions(wav_path)
         if not regions:
             raise AudioError("No speech was detected in the recording.")
@@ -178,10 +201,16 @@ def _stage_transcribe(conn, job: dict[str, Any]) -> None:
 
     transcriber = _get_transcriber(job["model_size"])
     db.update_job(conn, job["id"], compute_type=transcriber.compute_type)
+    engine = "Groq cloud" if is_groq else f"local {job['model_size']} model"
+    db.add_event(
+        conn, job["id"], f"Split into {len(chunks)} parts, transcribing with {engine}"
+    )
 
+    db.add_event(conn, job["id"], "Detecting spoken language")
     notice = _detect_language_notice(conn, job, transcriber, wav_path, chunks)
     if notice:
         db.update_job(conn, job["id"], language_notice=notice)
+        db.add_event(conn, job["id"], notice)
 
     language = None if job["language"] == "auto" else job["language"]
 
@@ -193,9 +222,14 @@ def _stage_transcribe(conn, job: dict[str, Any]) -> None:
     resume_from = (row["last_end"] or 0.0) + 0.5
     trailing_text = ""
 
-    for chunk in chunks:
+    total_chunks = len(chunks)
+    total_segments = 0
+    for index, chunk in enumerate(chunks, start=1):
         if chunk.end <= resume_from:
             continue
+        db.add_event(
+            conn, job["id"], f"Transcribing part {index} of {total_chunks}"
+        )
         audio = _read_chunk(wav_path, chunk)
         # the previous chunk's trailing sentence keeps continuity across cuts
         prompt = trailing_text[-200:] if trailing_text else None
@@ -214,6 +248,12 @@ def _stage_transcribe(conn, job: dict[str, Any]) -> None:
         if rows:
             db.insert_segments(conn, job["id"], rows)
             trailing_text = rows[-1]["text"]
+            total_segments += len(rows)
+        db.add_event(
+            conn,
+            job["id"],
+            f"Part {index} done, {total_segments} lines transcribed so far",
+        )
         # real progress: seconds of audio processed over total seconds
         db.update_job(conn, job["id"], progress=min(chunk.end / duration, 1.0))
 
@@ -231,6 +271,7 @@ def _stage_analyze(conn, job: dict[str, Any]) -> None:
     segments = db.get_segments(conn, job["id"])
     wav_path = Path(job["wav_path"])
 
+    db.add_event(conn, job["id"], "Separating teacher and student speech")
     updates, corrections = attribute_speakers(wav_path, segments)
     by_id = {u["id"]: u for u in updates}
     for seg in segments:
@@ -240,6 +281,7 @@ def _stage_analyze(conn, job: dict[str, Any]) -> None:
             seg["speaker_confidence"] = u["speaker_confidence"]
             seg["speaker_source"] = u["speaker_source"]
 
+    db.add_event(conn, job["id"], "Computing talk time and engagement metrics")
     stored = db.get_metrics(conn, job["id"])
     gaps = stored.get("silence_gaps", [])
     results = metrics_mod.analyze(
@@ -296,12 +338,15 @@ def process_job(conn, job: dict[str, Any]) -> None:
     stage_names = [name for name, _ in STAGES]
     start_index = stage_names.index(completed) + 1 if completed in stage_names else 0
 
+    if start_index == 0:
+        db.add_event(conn, job["id"], "Job started")
     for name, fn in STAGES[start_index:]:
         db.set_status(conn, job["id"], name)
         stage_start = time.time()
         try:
             fn(conn, db.get_job(conn, job["id"]))
         except AudioError as exc:
+            db.add_event(conn, job["id"], f"Stopped: {exc}")
             db.fail_job(conn, job["id"], name, str(exc))
             logger.warning("job %s failed in %s: %s", job["id"], name, exc)
             return
@@ -310,11 +355,13 @@ def process_job(conn, job: dict[str, Any]) -> None:
                 "job %s crashed in %s:\n%s", job["id"], name, traceback.format_exc()
             )
             message = _friendly_error(name, exc)
+            db.add_event(conn, job["id"], f"Stopped: {message}")
             db.fail_job(conn, job["id"], name, message)
             return
         logger.info(
             "job %s stage %s done in %.1fs", job["id"], name, time.time() - stage_start
         )
+    db.add_event(conn, job["id"], "Done, opening results")
     db.set_status(conn, job["id"], "done")
 
 

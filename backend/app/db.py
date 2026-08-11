@@ -72,6 +72,14 @@ CREATE TABLE IF NOT EXISTS metrics (
     PRIMARY KEY (job_id, name)
 );
 
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL REFERENCES jobs(id),
+    ts REAL NOT NULL,
+    message TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_events_job ON events(job_id, id);
+
 CREATE TABLE IF NOT EXISTS session_metadata (
     job_id TEXT PRIMARY KEY REFERENCES jobs(id),
     data TEXT NOT NULL,          -- JSON of the SessionMetadata dataclass
@@ -156,6 +164,25 @@ def add_warning(conn: sqlite3.Connection, job_id: str, warning: str) -> None:
     warnings = json.loads(job["warnings"]) if job["warnings"] else []
     warnings.append(warning)
     update_job(conn, job_id, warnings=json.dumps(warnings))
+
+
+def add_event(conn: sqlite3.Connection, job_id: str, message: str) -> None:
+    """Append a human-readable activity line for the live processing feed."""
+    conn.execute(
+        "INSERT INTO events (job_id, ts, message) VALUES (?, ?, ?)",
+        (job_id, time.time(), message),
+    )
+    conn.commit()
+
+
+def get_events(
+    conn: sqlite3.Connection, job_id: str, after_id: int = 0
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT id, ts, message FROM events WHERE job_id = ? AND id > ? ORDER BY id",
+        (job_id, after_id),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def next_queued_job(conn: sqlite3.Connection) -> dict[str, Any] | None:

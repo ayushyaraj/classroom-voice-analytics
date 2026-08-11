@@ -32,6 +32,10 @@ export function getNewSegments(jobId, afterId) {
   return request(`/api/jobs/${jobId}/segments?after_id=${afterId}`);
 }
 
+export function getEvents(jobId, afterId) {
+  return request(`/api/jobs/${jobId}/events?after_id=${afterId}`);
+}
+
 export function flipLabels(jobId, flips) {
   return request(`/api/jobs/${jobId}/segments`, {
     method: "PATCH",
