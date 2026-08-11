@@ -35,19 +35,30 @@ continue from the first unchecked item. Do not restart completed work.
 
 - [x] Read sample JSON, ffprobe the mp3, report findings
 - [x] .gitignore, .env.example, PROGRESS.md
-- [ ] git init, branch main, origin, first commit
-- [ ] venv (py -3.11), verify 3.11.9, background pip install to logs\install.log
-- [ ] backend/app/config.py and backend/app/config/lexicons.py
-- [ ] backend/app/db.py
-- [ ] backend/app/metadata/loader.py plus tests
-- [ ] backend/app/pipeline/preprocess.py
-- [ ] backend/app/pipeline/chunker.py
-- [ ] backend/app/asr/base.py and faster_whisper_backend.py
-- [ ] backend/app/pipeline/speakers.py
-- [ ] backend/app/pipeline/metrics.py plus tests
-- [ ] backend/app/pipeline/summary.py
-- [ ] backend/app/routes/jobs.py, worker.py, main.py
-- [ ] run pytest, fix, push backend
+- [x] git init, branch main, origin, first commit
+- [x] venv (py -3.11), verify 3.11.9, background pip install to logs\install.log
+- [x] backend/app/config/__init__.py (config.py would collide with the
+      config/ package holding lexicons.py, noted for README) and lexicons.py
+- [x] backend/app/db.py
+- [x] backend/app/metadata/loader.py plus tests (25 tests pass)
+- [x] backend/app/pipeline/preprocess.py
+- [x] backend/app/pipeline/chunker.py
+- [x] backend/app/asr/base.py and faster_whisper_backend.py
+- [x] backend/app/pipeline/speakers.py
+- [x] backend/app/pipeline/metrics.py plus tests
+- [x] backend/app/pipeline/summary.py
+- [x] backend/app/routes/jobs.py, worker.py, ingest.py, main.py
+- [x] 60 s trimmed clip at samples/classroom_sample_60s.mp3, command:
+      ffmpeg -ss 600 -t 60 -i "input-samples\AUDIO SAMPLE 002\OD11163_2025-12-23-121239.mp3" -ac 1 -b:a 64k samples\classroom_sample_60s.mp3
+- [x] smoke test: 60 s clip end to end with tiny model passed. Whole
+      pipeline runs: preprocess, VAD, chunk, transcribe, speaker attribution,
+      metrics, summary. Metadata merged from real sidecar (village Igatpuri,
+      teacher Santana, 22 students). Language notice fired correctly (selected
+      mr, detected hi, did not override).
+- [x] run pytest (25 pass), fixes applied: added torchaudio==2.6.0 (silero
+      hub imports it), pinned silero-vad to v5.1.2, summary handles zero
+      questions and 1-minute singular, added /api/jobs/demo/id route.
+- [ ] push backend + open PR
 - [ ] full 67 min verification run in background, record wall clock and peak RSS
 - [ ] frontend (React + Vite, plain CSS modules)
 - [ ] 60 s trimmed clip in samples/, document trim command
