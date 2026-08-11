@@ -1,0 +1,23 @@
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 16px 64px;
+}
+
+.header {
+  padding: 8px 0 16px;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 20px;
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}

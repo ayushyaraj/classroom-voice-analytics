@@ -1,0 +1,102 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dropzone,
+.dropzoneActive {
+  border: 2px dashed var(--border);
+  border-radius: 6px;
+  background: var(--card);
+  padding: 24px;
+  cursor: pointer;
+}
+
+.dropzoneActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dropTitle {
+  margin: 0;
+  font-weight: 600;
+}
+
+.dropHint {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.fileList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.field select,
+.field input {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+}
+
+.warning {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.error {
+  margin: 0;
+  color: var(--error);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.submit {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.demoLink {
+  color: var(--accent);
+}

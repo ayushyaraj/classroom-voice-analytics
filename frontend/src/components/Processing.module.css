@@ -1,0 +1,91 @@
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+}
+
+.statusRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.elapsed {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.barTrack {
+  height: 10px;
+  background: var(--accent-soft);
+  border-radius: 5px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.5s linear;
+}
+
+.percent {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 6px 0 0;
+}
+
+.notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.error {
+  color: var(--error);
+  font-weight: 600;
+}
+
+.back {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.partial {
+  margin-top: 16px;
+}
+
+.partialTitle {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+
+.partialScroll {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  background: var(--bg);
+}
+
+.partialLine {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.time {
+  color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace;
+  margin-right: 8px;
+  font-size: 12px;
+}
